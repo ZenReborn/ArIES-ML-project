@@ -1,0 +1,117 @@
+Multi-Task Classification and Regression of Consumer Complaints Using DeBERTa
+1. Introduction
+The objective of this project is to automatically analyze consumer complaint text and predict three related targets:
+Primary category of the complaint
+Secondary category of the complaint
+Severity score on a discrete scale
+The task is evaluated using a weighted metric:
+Final Score=0.3⋅Primary Accuracy+0.4⋅Secondary Accuracy+0.3⋅𝑅2 Severity
+
+2. Constraints and Compliance
+
+The solution strictly adheres to the stated constraints:
+No API keys were used
+No prompting or chat-based inference was used
+No ollama or hosted LLM inference was used
+
+All models were trained locally using the HuggingFace transformers library and PyTorch, with pretrained weights downloaded from the HuggingFace model hub. No external data beyond the provided dataset was used.
+
+3. Model Choice and Motivation
+3.1 Why Transformer-Based Models?
+
+Consumer complaints are typically:
+Long
+Context-rich
+Semantically nuanced
+
+Traditional bag-of-words or shallow models struggle to capture such structure. Transformer models, pretrained on large corpora, are well-suited for this domain due to their contextual representation capability.
+
+3.2 Why DeBERTa-v3-base?
+
+The final solution uses DeBERTa-v3-base as the backbone model due to:
+Disentangled attention mechanisms
+Strong empirical performance on text classification
+Efficient fine-tuning on medium-sized datasets
+Good balance between accuracy and computational cost
+
+4. Problem Formulation: Multi-Task Learning
+
+Rather than training separate models for each target, the task is formulated as a multi-task learning (MTL) problem.
+
+4.1 Architecture
+
+A shared DeBERTa encoder processes the complaint text
+Three task-specific heads are attached:
+Primary category classifier (softmax)
+Secondary category classifier (softmax)
+Severity regression head (linear)
+
+4.2 Rationale
+
+Multi-task learning is appropriate because:
+Primary and secondary categories are hierarchically related
+Severity is correlated with complaint content and category
+Shared representations improve generalization and reduce overfitting
+
+5. Data Preprocessing
+
+Text is tokenized using the DeBERTa tokenizer
+Maximum sequence length is set to 224 tokens, chosen as a trade-off between:
+Context preservation
+GPU memory usage
+Training speed
+
+Tokenization is performed once, outside the dataset class, to avoid repeated CPU overhead
+Primary and secondary categories are label-encoded
+Severity is treated as a continuous regression target
+
+6. Loss Function Design
+
+The training loss mirrors the official evaluation metric:
+𝐿=0.3⋅CE primary+0.4⋅CE secondary+0.3⋅MSE severity
+Where:
+Cross-entropy loss is used for classification
+Mean squared error (MSE) is used for severity regression
+Aligning the loss weights with the evaluation metric ensures that optimization directly targets leaderboard performance.
+
+7. Training Strategy
+7.1 Cross-Validation (Model Selection)
+
+3-fold stratified cross-validation was used
+Stratification was performed on the primary category
+
+Purpose:
+Estimate generalization performance
+Select hyperparameters
+Detect overfitting
+
+Cross-validation results:
+Mean score ≈ 0.60
+Standard deviation ≈ 0.01
+
+This indicates stable and consistent performance across folds.
+
+7.2 Final Training
+
+After model selection, a final model was trained using:
+100% of the training data
+5 epochs
+
+Batch size of 8
+
+AdamW optimizer with learning rate 2e-5
+
+No validation was performed at this stage, following standard practice:
+cross-validation for selection, full-data training for deployment.
+
+8. Inference and Post-Processing
+
+During inference:
+The model predicts all three targets simultaneously
+Severity predictions are:
+Rounded to the nearest integer
+Clipped to the valid range [1, 5]
+Predictions are formatted exactly according to the submission specification.
+
+9. Results
+Final leaderboard score achieved: ~0.71
